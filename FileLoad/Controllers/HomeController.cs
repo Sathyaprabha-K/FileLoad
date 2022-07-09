@@ -28,31 +28,65 @@ namespace FileLoad.Controllers
         }
         private async Task<FileOnFileSystemModel> Writedatatofile(Login login)
         {
-            fileOnFileSystemModel.FileName = String.Format("{0}-{1}.txt", DateTime.Now.ToString("yyyyMMddhhmmss"), "Output");
-            fileOnFileSystemModel.Filenamewithpath = Path.Combine(fileOnFileSystemModel.FilePath, fileOnFileSystemModel.FileName);
-            ViewBag.path = fileOnFileSystemModel.Filenamewithpath;
-            TempData["file"] = fileOnFileSystemModel.FileName;
-            byte[] utf8bytesJson = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(login);
-            string strResult = System.Text.Encoding.UTF8.GetString(utf8bytesJson);
-            using (StreamWriter sw = (System.IO.File.Exists(fileOnFileSystemModel.Filenamewithpath)) ? System.IO.File.AppendText(fileOnFileSystemModel.Filenamewithpath) : System.IO.File.CreateText(fileOnFileSystemModel.Filenamewithpath))
-
+            try
             {
-                await sw.WriteAsync(strResult);
+                _logger.LogInformation("Started Writing to file");
+                //  fileOnFileSystemModel.FileName = String.Format("{0}-{1}.txt", DateTime.Now.ToString("yyyyMMddhhmmss"), "Output");
+                fileOnFileSystemModel.Filenamewithpath = fileOnFileSystemModel.GetFullpath(fileOnFileSystemModel.FilePath);
+                    //Path.Combine(fileOnFileSystemModel.FilePath, fileOnFileSystemModel.FileName);
+                //ViewBag.path = fileOnFileSystemModel.Filenamewithpath;
+                TempData["file"] = fileOnFileSystemModel.FileName;
+                byte[] utf8bytesJson = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(login);
+                string strResult = System.Text.Encoding.UTF8.GetString(utf8bytesJson);
+                using (StreamWriter sw = (System.IO.File.Exists(fileOnFileSystemModel.Filenamewithpath)) ? System.IO.File.AppendText(fileOnFileSystemModel.Filenamewithpath) : System.IO.File.CreateText(fileOnFileSystemModel.Filenamewithpath))
+
+                {
+                    await sw.WriteAsync(strResult);
+                }
+                _logger.LogInformation("Completed Writing to file");
+                return fileOnFileSystemModel;
             }
-            return fileOnFileSystemModel;
+         
+            catch (Exception e)
+            {
+                _logger.LogError(e.Message);
+                return null;
+            }
+           
         }
         [HttpPost]
         public async Task<IActionResult> Index(Login login)
         {
-            var fileName = await Writedatatofile(login);
+            try
+            {
+                var fileName = await Writedatatofile(login);
 
-            return View("View", fileName);
+                _logger.LogInformation("Json data has been written to file successfully");
+                return View("View", fileName);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.Message);
+                return null;
+            }
         }
         public async Task<FileResult> GetTxt(string fileName)
         {//open the file and read content
-            var fs = System.IO.File.OpenRead(fileName);
-            await Task.Delay(3000);
-            return File(fs, fileOnFileSystemModel.FileType, TempData["file"].ToString());
+
+            
+            try
+            {
+               var  fs = System.IO.File.OpenRead(fileName);
+                _logger.LogInformation("File has been read successfully");
+                await Task.Delay(3000);
+                return File(fs, fileOnFileSystemModel.FileType, TempData["file"].ToString());
+            }
+            catch(Exception e)
+            {
+                _logger.LogError(e.Message);
+                return null;
+            }
+           
         }
 
 

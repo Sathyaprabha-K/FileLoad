@@ -10,5 +10,7 @@ namespace FileLoad.Models
         public string FileName { get; set; }
         public string FileType { get; set; }
 
+        public abstract string  GetFullpath(string FileName);
+
     }
 }
