@@ -8,6 +8,10 @@ using System.Linq;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 using System.IO;
+using Microsoft.AspNetCore.Http;
+using System.Text.Json.Serialization;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace FileLoad.Controllers
 {
@@ -18,7 +22,7 @@ namespace FileLoad.Controllers
         public HomeController(ILogger<HomeController> logger, IConfiguration configuration)
         {
             _logger = logger;
-            fileOnFileSystemModel.FilePath = configuration["FileConfiguration:Filepath"];
+            fileOnFileSystemModel.Filenamewithpath = configuration["FileConfiguration:Filepath"];
             fileOnFileSystemModel.FileType = "application/txt";
         }
 
@@ -32,17 +36,44 @@ namespace FileLoad.Controllers
             {
                 _logger.LogInformation("Started Writing to file");
                 //  fileOnFileSystemModel.FileName = String.Format("{0}-{1}.txt", DateTime.Now.ToString("yyyyMMddhhmmss"), "Output");
-                fileOnFileSystemModel.Filenamewithpath = fileOnFileSystemModel.GetFullpath(fileOnFileSystemModel.FilePath);
-                    //Path.Combine(fileOnFileSystemModel.FilePath, fileOnFileSystemModel.FileName);
+               // fileOnFileSystemModel.Filenamewithpath = fileOnFileSystemModel.GetFullpath(fileOnFileSystemModel.FilePath);
+                //Path.Combine(fileOnFileSystemModel.FilePath, fileOnFileSystemModel.FileName);
                 //ViewBag.path = fileOnFileSystemModel.Filenamewithpath;
-                TempData["file"] = fileOnFileSystemModel.FileName;
-                byte[] utf8bytesJson = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(login);
-                string strResult = System.Text.Encoding.UTF8.GetString(utf8bytesJson);
-                using (StreamWriter sw = (System.IO.File.Exists(fileOnFileSystemModel.Filenamewithpath)) ? System.IO.File.AppendText(fileOnFileSystemModel.Filenamewithpath) : System.IO.File.CreateText(fileOnFileSystemModel.Filenamewithpath))
-
+                TempData["file"] = fileOnFileSystemModel.Filenamewithpath;
+      
+                if (System.IO.File.Exists(fileOnFileSystemModel.Filenamewithpath) && System.IO.File.ReadAllText(fileOnFileSystemModel.Filenamewithpath) != "")
                 {
-                    await sw.WriteAsync(strResult);
+                    var jsonData = System.IO.File.ReadAllText(fileOnFileSystemModel.Filenamewithpath);
+                    await Task.Delay(3000);
+                    var loginList = JsonConvert.DeserializeObject<List<Login>>(jsonData) ?? new List<Login>();
+                    loginList.Add(new Login()
+                    {
+                        FirstName = login.FirstName,
+                        LastName = login.LastName,
+                        Email = login.Email
+                    });
+                    var newjsonData = JsonConvert.SerializeObject(loginList);
+                     System.IO.File.WriteAllText(fileOnFileSystemModel.Filenamewithpath, newjsonData);
                 }
+
+                else
+                {
+                    using (StreamWriter sw = System.IO.File.CreateText(fileOnFileSystemModel.Filenamewithpath))
+                    {
+                        List<Login> data = new List<Login>();
+                        
+                        data.Add(new Login()
+                        {
+                            FirstName = login.FirstName,
+                            LastName = login.LastName,
+                            Email = login.Email
+                        }); 
+                        string newjsonData = JsonConvert.SerializeObject(data);
+                        sw.Close();
+                        System.IO.File.WriteAllText(fileOnFileSystemModel.Filenamewithpath, newjsonData);
+                    }
+                }
+                
                 _logger.LogInformation("Completed Writing to file");
                 return fileOnFileSystemModel;
             }
@@ -59,6 +90,8 @@ namespace FileLoad.Controllers
         {
             try
             {
+             
+
                 var fileName = await Writedatatofile(login);
 
                 _logger.LogInformation("Json data has been written to file successfully");
@@ -71,9 +104,7 @@ namespace FileLoad.Controllers
             }
         }
         public async Task<FileResult> GetTxt(string fileName)
-        {//open the file and read content
-
-            
+        {
             try
             {
                var  fs = System.IO.File.OpenRead(fileName);
